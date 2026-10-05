@@ -1,0 +1,10 @@
+node_modules/
+dist/
+artifacts/
+.venv/
+__pycache__/
+*.zip
+.env
+.env.*
+*.log
+exports/

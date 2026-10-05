@@ -1,0 +1,22 @@
+{
+  "name": "chatkeeps",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs && node tests/drag-browser.mjs && node tests/archive-browser.mjs && node tests/repeat-browser.mjs",
+    "check": "npm test && npm run build && npm run test:browser && npm run test:extension",
+    "test:extension": "node tests/extension-smoke.mjs"
+  },
+  "dependencies": {
+    "@wppconnect/wa-js": "4.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "esbuild": "0.28.2"
+  },
+  "license": "MIT",
+  "description": "Local-first WhatsApp message selection and offline HTML archives"
+}

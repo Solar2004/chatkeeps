@@ -1,0 +1,12 @@
+import {build} from 'esbuild';import {cp,copyFile,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
+import {buildIcons} from './icons.mjs';
+await rm('dist',{recursive:true,force:true});await mkdir('dist/vendor',{recursive:true});
+await build({entryPoints:['src/content.js'],bundle:true,format:'iife',outfile:'dist/content.js',loader:{'.css':'text'},target:'chrome111',minify:false});
+await build({entryPoints:['src/background.js'],bundle:true,format:'esm',outfile:'dist/background.js',target:'chrome111',minify:false});
+for(const f of ['manifest.json','README.md','UPSTREAM.md','LICENSE'])await copyFile(f,`dist/${f}`);
+await copyFile('node_modules/@wppconnect/wa-js/dist/wppconnect-wa.js','dist/wppconnect-wa.js');
+await copyFile('node_modules/@wppconnect/wa-js/dist/wppconnect-wa.js.LICENSE.txt','dist/vendor/wppconnect-wa.js.LICENSE.txt');
+await cp('vendor','dist/vendor',{recursive:true});
+await buildIcons('dist/icons');
+const manifest=JSON.parse(await readFile('dist/manifest.json','utf8'));manifest.version=JSON.parse(await readFile('package.json','utf8')).version;await writeFile('dist/manifest.json',JSON.stringify(manifest,null,2)+'\n');
+console.log('Extensión construida en dist/');
