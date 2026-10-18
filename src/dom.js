@@ -1,4 +1,5 @@
 // DOM extraction adapted and hardened from upstream MIT exporter; see UPSTREAM.md.
+import {WARN} from './core.js';
 const QUOTE='.quoted-mention, [data-testid="quoted-message"], [data-testid="quoted-msg"], [data-testid="quoted-message-wrapper"], [data-testid="reply-context"], [data-testid="quoted-message-container"], [aria-label="Quoted message"]';
 const SKIP=new Set(['STYLE','SCRIPT','NOSCRIPT','TEMPLATE','SVG','BUTTON']);
 export function textOf(node) {
@@ -59,7 +60,8 @@ export function extract(row) {
   const meta=own.matches('[data-pre-plain-text]')?own:own.querySelector('[data-pre-plain-text]');
   const raw=meta?.getAttribute('data-pre-plain-text')?.replace(/[\u200e\u200f]/g,'') || '';
   const match=raw.match(/^\[([^\]]+)\]\s*(.*):\s*$/);
-  const outgoing=own.querySelector('[data-icon="tail-out"], [aria-label="You:"]') || [...own.querySelectorAll('svg title')].some(el=>/wds-ic-(read|sent)/.test(el.textContent));
+  // Delivery ticks only appear on your own messages, also on photos without a tail.
+  const outgoing=own.querySelector('[data-icon="tail-out"], [aria-label="You:"], [data-icon^="msg-check"], [data-icon^="msg-dblcheck"], [data-icon="msg-time"]') || [...own.querySelectorAll('svg title')].some(el=>/wds-ic-(read|sent|delivered)/.test(el.textContent));
   const incoming=own.querySelector('[data-icon="tail-in"]');
   const direction=id.startsWith('true_') || outgoing?'out':id.startsWith('false_') || incoming?'in':'unknown';
   const visibleAuthor=own.querySelector('[aria-label$=":"]')?.getAttribute('aria-label')?.replace(/:\s*$/,'');
@@ -86,13 +88,13 @@ export function extract(row) {
   for(const media of m.media)if(['sticker','imagen'].includes(media.type) && mediaImages[0])media.preview_url=mediaImages[0].src;
   if(!m.timestamp){
     m.timestamp=[...own.querySelectorAll('span')].map(el=>el.textContent.trim()).find(s=>/^\d{1,2}:\d{2}(\s?[ap]\.?m\.?)?$/i.test(s)) || null;
-    m.warnings.push('Fecha completa no disponible en el DOM.');
+    m.warnings.push(WARN.date);
   }
-  if(!m.author)m.warnings.push('Autor no identificado en el DOM.');
-  if([...row.querySelectorAll('[role="button"],button')].some(e=>/^(leer más|ler mais|read more|ver más)$/i.test(e.textContent.trim())))m.warnings.push('Texto posiblemente truncado; abre «Leer más» y vuelve a capturar.');
+  if(!m.author)m.warnings.push(WARN.author);
+  if([...row.querySelectorAll('[role="button"],button')].some(e=>/^(leer más|ler mais|read more|ver más)$/i.test(e.textContent.trim())))m.warnings.push(WARN.truncated);
   if(!m.text && !m.media.length){
     if(/recalled|revoked|delete/.test(icons) || /mensaje eliminado|mensagem apagada|message was deleted/i.test(textOf(own)))m.text='[mensaje eliminado]';
-    else m.warnings.push('Contenido no reconocido; consulta el mensaje original.');
+    else m.warnings.push(WARN.unknown);
   }
   return m;
 }

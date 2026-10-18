@@ -4,10 +4,10 @@ Selecciona mensajes de WhatsApp Web y guárdalos como texto para una IA o como u
 
 ## Instalar
 
-1. Descarga `chatkeeps-0.5.0.zip` desde [Releases](https://github.com/Solar2004/chatkeeps/releases) y descomprímelo.
+1. Descarga `chatkeeps-0.6.0.zip` desde [Releases](https://github.com/Solar2004/chatkeeps/releases) y descomprímelo.
 2. Abre `vivaldi://extensions` o `chrome://extensions` y activa **Modo desarrollador**.
 3. Pulsa **Cargar descomprimida** y elige la carpeta que contiene `manifest.json`.
-4. Recarga WhatsApp Web. Verás un único icono verde; al abrirlo, el panel indica **Chatkeeps v0.5.0**.
+4. Recarga WhatsApp Web. Verás un único icono verde; al abrirlo, el panel indica **Chatkeeps v0.6.0**.
 
 Si actualizas una instalación anterior, sustituye su carpeta `dist`, pulsa **Recargar** en la extensión y recarga también WhatsApp. Tener dos versiones activas puede producir conflictos.
 
@@ -50,14 +50,15 @@ Un error detiene la secuencia sin reintentos automáticos. El contador indica so
 
 El archivo tiene burbujas de conversación, fechas, respuestas, imágenes y stickers, reproductores de audio/vídeo y enlaces para descargar documentos. Usa **Ctrl+F** para buscar y **Ctrl+P** para imprimir o guardar PDF. Las citas enlazan al original cuando se conoce su ID y está incluido.
 
-Con **Incluir archivos en el HTML**, Chatkeeps solicita a WhatsApp los archivos disponibles y los incorpora al propio HTML. No necesitas una carpeta adicional. Si el original no se recupera, puede incluir una vista previa local de la imagen o sticker, claramente etiquetada. Los archivos ausentes se señalan; no se inventa su contenido. Puedes desactivar esta opción para obtener un archivo más ligero.
+Con **Incluir archivos en el HTML**, Chatkeeps solicita a WhatsApp los archivos originales, a resolución completa, y los incorpora al propio HTML. No necesitas una carpeta adicional. Si el original no se recupera, puede incluir la vista previa en baja calidad que muestra el chat; el HTML y el panel lo señalan e indican el motivo. Los archivos ausentes se señalan; no se inventa su contenido. Puedes desactivar esta opción para obtener un archivo más ligero.
 
 ## Alcance y límites
 
 - Se captura lo que WhatsApp Web consigue cargar en el chat abierto. No se garantiza historial que WhatsApp no haya sincronizado. Una discontinuidad detectada se indica como captura parcial.
 - El recorrido hacia el final tiene límites de cinco minutos y aproximadamente 20.000 mensajes. La descarga acepta hasta 20 MB por archivo y 100 MB de multimedia acumulada por HTML.
 - WhatsApp no ofrece una interfaz DOM estable: sus actualizaciones pueden requerir adaptar selectores o WA-JS. Un archivo caducado o no descargable puede faltar.
-- La dirección del mensaje y su autor se conservan cuando existen señales identificables; los datos desconocidos no se inventan. Las fechas conservan el formato visible de WhatsApp.
+- Autor, hora exacta, tipo de mensaje y texto completo se leen del propio registro de WhatsApp Web (WA-JS) para cada mensaje seleccionado, también en fotos sin texto, donde la página no muestra esos datos. Si WA-JS no reconoce un mensaje, se usa lo visible en la página y lo que falte se señala; no se inventa. La fecha usa el formato de tu navegador.
+- Si algo sale mal, **Copiar diagnóstico técnico** (en «Citas, audios y exportación») copia la estructura de los mensajes seleccionados sin textos, nombres ni números, para adjuntarla a un issue.
 - No se interpretan imágenes, stickers ni vídeo. Las transcripciones automáticas se etiquetan y pueden contener errores.
 
 ## Privacidad

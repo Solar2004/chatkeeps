@@ -1,5 +1,6 @@
-const allowedId = value => typeof value === 'string' && /^(?:(?:true|false)_[\w@.:-]+|[A-Fa-f0-9]{16,128})$/.test(value) && value.length < 512;
+const allowedId = value => typeof value === 'string' && /^(?:(?:true|false)_[\w@.:-]+|[A-Za-z0-9]{12,128})$/.test(value) && value.length < 512;
 import {repeatMessage} from './repeat-message.js';
+import {messageDetails,resolveMessageId} from './message-details.js';
 async function inPage(tabId, func, args) {
   const [{result}] = await chrome.scripting.executeScript({target:{tabId}, world:'MAIN', func, args});
   if(result?.__error) throw new Error(result.__error);
@@ -7,21 +8,7 @@ async function inPage(tabId, func, args) {
 }
 async function resolveId(tabId,id) {
   if(/^(true|false)_/.test(id))return id;
-  return inPage(tabId,async raw=>{
-    try{
-      const chat=globalThis.WPP?.chat?.getActiveChat?.();
-      const chatId=chat?.id?._serialized;
-      if(!chatId || !WPP.chat.getMessageById)throw new Error('WA-JS no puede resolver este ID en el chat abierto. Se conserva el contenido visible.');
-      for(const fromMe of [true,false]){
-        try{
-          const msg=await WPP.chat.getMessageById(`${fromMe}_${chatId}_${raw}`);
-          if(WPP.chat.getActiveChat()?.id?._serialized!==chatId)throw new Error('Chat cambiado.');
-          if(msg?.id?.id===raw && msg.id.remote?._serialized===chatId)return msg.id._serialized;
-        }catch{}
-      }
-      throw new Error('Original no disponible para este mensaje. Se conserva la cita visible.');
-    }catch(e){return {__error:String(e?.message || e)}}
-  },[id]);
+  return inPage(tabId,resolveMessageId,[id]);
 }
 chrome.action.onClicked.addListener(async tab=>{
   if(!tab.id || !tab.url?.startsWith('https://web.whatsapp.com/'))return;
@@ -34,6 +21,11 @@ chrome.runtime.onMessage.addListener((msg,sender,respond)=>{
     if(!sender.tab?.id || !sender.url?.startsWith('https://web.whatsapp.com/'))throw new Error('Solicitud rechazada fuera de WhatsApp Web.');
     if(msg.type==='REPEAT_TARGET')return inPage(sender.tab.id,()=>globalThis.WPP?.chat?.getActiveChat?.()?.id?._serialized || null,[]);
     if(msg.type==='REPEAT')return inPage(sender.tab.id,repeatMessage,[msg.command,msg.options]);
+    if(msg.type==='DETAILS'){
+      if(!Array.isArray(msg.ids) || msg.ids.length>500)throw new Error('Lista de mensajes no válida.');
+      const ids=msg.ids.filter(allowedId);
+      return ids.length?inPage(sender.tab.id,messageDetails,[ids]):{};
+    }
     if(msg.type==='QUOTE'){
       if(!allowedId(msg.id))throw new Error('ID de mensaje no válido.');
       const result=await inPage(sender.tab.id,async id=>{
@@ -41,7 +33,7 @@ chrome.runtime.onMessage.addListener((msg,sender,respond)=>{
           if(!globalThis.WPP?.chat?.getQuotedMsg)throw new Error('WA-JS no está listo. Espera unos segundos y prueba otra vez.');
           const q=await WPP.chat.getQuotedMsg(id);if(!q)return {id:null,text:null,source:'unresolved'};
           const body=typeof q.body==='string'?q.body:null;
-          return {id:q.id?._serialized || (q.id == null ? null : String(q.id)),text:body,type:q.type || 'unknown',author:q.author?._serialized || q.author || null,timestamp:Number.isFinite(q.t)?q.t:null,source:'wa-js'};
+          return {id:q.id?._serialized || (q.id == null ? null : String(q.id)),text:body,type:q.type || 'unknown',author:(()=>{try{const c=q.senderObj;return c?.isMe?(WPP.profile?.getMyProfileName?.() || null):c?.name || c?.pushname || c?.verifiedName || c?.formattedName || null}catch{return null}})(),timestamp:Number.isFinite(q.t)?q.t:null,source:'wa-js'};
         }catch(e){return {__error:String(e?.message || e)}}
       },[await resolveId(sender.tab.id,msg.id)]);
       return result;

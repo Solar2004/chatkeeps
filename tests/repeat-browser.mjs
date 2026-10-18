@@ -16,13 +16,13 @@ try{
   }}};
  });
  await page.addScriptTag({path:resolve('dist/content.js')});
- const ui=page.locator('#hermes-whatsapp-context');await ui.locator('#launcher').click();
+ const ui=page.locator('#chatkeeps-root');await ui.locator('#launcher').click();
  await ui.locator('#repeat summary').click();await ui.locator('#repeat-start').click();
- await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#repeat-status').textContent.includes('Escribe un mensaje'));
+ await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#repeat-status').textContent.includes('Escribe un mensaje'));
  await ui.locator('#repeat-text').fill('Te amo ❤️');await ui.locator('#repeat-seconds').fill('1');await ui.locator('#repeat-count').fill('2');
  await ui.locator('#repeat-start').click();await ui.locator('#close').click();
  await page.waitForFunction(()=>window.sent.length===2);
- await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#repeat-status').textContent.includes('completada'));
+ await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#repeat-status').textContent.includes('completada'));
  assert.deepEqual(await page.evaluate(()=>window.sent),[{id:'test@c.us',text:'Te amo ❤️'},{id:'test@c.us',text:'Te amo ❤️'}]);
  assert.equal(await page.locator('#draft').textContent(),'Mi borrador');
  await ui.locator('#launcher').click();await ui.locator('#repeat-start').click();await ui.locator('#repeat-stop').click();

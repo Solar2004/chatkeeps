@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateCount, mergeOrder, lastN, formatText, makeExport} from '../src/core.js';
+import {validateCount, mergeOrder, lastN, formatText, makeExport, applyDetails, preferRicher, rawId, WARN} from '../src/core.js';
 const msg=(id,text=id)=>({id,author:'Prueba',timestamp:'10:00, 07/09/2026',text,media:[],warnings:[]});
 test('N accepts positive integers only',()=>{for(const n of [0,-1,1.5,NaN,'',Infinity,5001])assert.throws(()=>validateCount(n));assert.equal(validateCount('200'),200)});
 test('overlapping windows preserve timeline',()=>{assert.deepEqual(mergeOrder(['c','d'],['a','b','c']),['a','b','c','d']);assert.deepEqual(mergeOrder(['a','c'],['a','b','c','d']),['a','b','c','d'])});
@@ -35,4 +35,30 @@ test('disjoint virtual windows append when scrolling down, prepend when scrollin
  assert.deepEqual(mergeOrder(['a','b'],['e','f'],'after'),['a','b','e','f']);
  assert.deepEqual(mergeOrder(['e','f'],['a','b'],'before'),['a','b','e','f']);
  assert.deepEqual(mergeOrder(['a','b','e','f'],['b','c','d','e'],'after'),['a','b','c','d','e','f']);
+});
+test('WA-JS details complete a photo-only row the DOM could not read',()=>{
+ const row={id:'ACE2'+'0'.repeat(28),author:null,direction:'unknown',timestamp:null,text:'',media:[],quote:null,warnings:[WARN.date,WARN.author,WARN.unknown]};
+ const m=applyDetails(row,{id:`true_123@g.us_${row.id}_999@lid`,fromMe:true,author:'RAlexander',t:Date.UTC(2026,9,18,3,40)/1000,type:'image',text:''},{locale:'es-ES',timeZone:'UTC'});
+ assert.equal(m.direction,'out');assert.equal(m.author,'RAlexander');assert.equal(m.timestamp,'03:40, 18/10/2026');
+ assert.deepEqual(m.media.map(x=>x.type),['imagen']);assert.deepEqual(m.warnings,[]);assert.equal(m.wa_id,`true_123@g.us_${row.id}_999@lid`);
+ assert.equal(row.author,null,'source row must stay untouched');
+ const text=formatText(makeExport('NotasWazap',[m],{}));assert.match(text,/#01 · 03:40 · RAlexander\n  \[imagen\]/);assert.doesNotMatch(text,/Notas de captura/);
+});
+test('WA-JS full text replaces a truncated bubble and drops link-preview images',()=>{
+ const row={...msg('a','inicio…'),media:[{type:'imagen',preview_url:'blob:x'}],warnings:[WARN.truncated]};
+ const m=applyDetails(row,{id:'false_c_a',fromMe:false,author:'Ana',t:null,type:'chat',text:'inicio y final completo'});
+ assert.equal(m.text,'inicio y final completo');assert.deepEqual(m.media,[]);assert.deepEqual(m.warnings,[]);assert.equal(m.timestamp,'10:00, 07/09/2026');
+});
+test('audio keeps its transcript; notices and quotes come from WA-JS',()=>{
+ const voice=applyDetails({...msg('v',''),media:[{type:'audio',transcript:'hola',transcription_status:'automatic'}]},{id:'v',fromMe:false,type:'ptt',duration:67,text:''});
+ assert.deepEqual(voice.media,[{type:'audio',transcript:'hola',transcription_status:'automatic',duration:'1:07'}]);
+ const notice=applyDetails({...msg('n',''),warnings:[WARN.unknown]},{id:'n',fromMe:false,type:'gp2',text:''});
+ assert.equal(notice.direction,'system');assert.equal(notice.text,'[aviso de WhatsApp]');assert.deepEqual(notice.warnings,[]);
+ const reply=applyDetails(msg('r','vale'),{id:'r',fromMe:true,type:'chat',text:'vale',quoted:{id:'ORIG1',type:'image',text:null,author:'Ana'}});
+ const text=formatText(makeExport('x',[msg('ORIG1','foto'),reply],{}));assert.match(text,/Responde a #01 · Ana/);
+});
+test('serialized group keys link to bare DOM IDs; empty re-reads never win',()=>{
+ assert.equal(rawId('true_123@g.us_ABC_999@lid'),'ABC');assert.equal(rawId('ABC'),'ABC');
+ const full={...msg('a','texto'),media:[{type:'imagen'}]},empty={...msg('a',''),author:null,timestamp:null};
+ assert.equal(preferRicher(full,empty),full);assert.equal(preferRicher(empty,full),full);assert.equal(preferRicher(undefined,empty),empty);
 });

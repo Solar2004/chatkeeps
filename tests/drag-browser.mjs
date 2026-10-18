@@ -28,7 +28,7 @@ await page.evaluate(()=>{
  document.querySelector('#pane').onscroll=()=>{const start=Math.min(53,Math.floor(document.querySelector('#pane').scrollTop/60));if(start!==window.start)window.renderWindow(start,true)};
 });
 await page.addScriptTag({path:resolve('dist/content.js')});
-const panel=page.locator('#hermes-whatsapp-context');
+const panel=page.locator('#chatkeeps-root');
 await panel.locator('#launcher').click();
 await panel.locator('#select').click();await panel.locator('#close').click();
 const count=async()=>Number(await panel.locator('#dock-count').textContent());
@@ -78,7 +78,7 @@ await page.keyboard.press('Escape');const saved=await count();await page.mouse.m
 await panel.locator('#launcher').click();await panel.locator('#select').click();await panel.locator('#close').click();const startAgain=await center(await page.evaluate(()=>window.start+1));
 await page.mouse.move(startAgain.x,startAgain.y);await page.mouse.down();await page.mouse.move(startAgain.x,startAgain.y+10);
 await page.evaluate(()=>{document.querySelector('header span').title='Otro chat';document.querySelector('header span').textContent='Otro chat';document.querySelector('#messages').replaceChildren()});
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#dock-count').textContent==='0');
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#dock-count').textContent==='0');
 await page.mouse.up();assert.equal(await count(),0);assert.deepEqual(errors,[]);
 console.log('Arrastre: adición, clic, scroll automático, ventanas sin solapamiento, reciclado, desaparición temporal, orden, deduplicación, Esc y cambio de chat verificados.');
 } finally {await browser.close()}

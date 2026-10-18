@@ -10,14 +10,14 @@ await page.setContent(`<!doctype html><html><head><title>Fixture</title><style>b
 </div></div></div></body></html>`);
 await page.evaluate(()=>{globalThis.chrome={runtime:{sendMessage:async req=>({ok:true,data:req.type==='QUOTE'?{id:'false_chat_original',text:'Texto original',source:'test'}:{}}),onMessage:{addListener(){}}}}});
 await page.addScriptTag({path:resolve('dist/content.js')});
-const panel=page.locator('#hermes-whatsapp-context');
+const panel=page.locator('#chatkeeps-root');
 assert.equal(await panel.locator('#panel').isVisible(),false);
 assert.equal(await panel.locator('#dock button:visible').count(),1);
 await panel.locator('#launcher').click();
 await assertVisible(panel.locator('h1'));
 assert.equal(await panel.locator('#chat').textContent(),'Ana');
 await panel.locator('#quantity').fill('2');await panel.locator('#capture').click();
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#count').textContent==='2 mensajes');
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#count').textContent==='2 mensajes');
 let preview=await panel.locator('#preview').inputValue();assert.match(preview,/Segundo/);assert.match(preview,/\[audio.*sin transcribir/);assert.match(preview,/Cita · Ana/);assert.match(preview,/> Primero/);assert.doesNotMatch(preview,/AnaPrimero|false_chat_a/);
 await panel.locator('#clear').click();await panel.locator('#select').click();
 await page.locator('[data-id="false_chat_a"]').click();await page.locator('[data-id="false_chat_c"]').click({modifiers:['Shift']});
@@ -25,7 +25,7 @@ assert.equal(await panel.locator('#count').textContent(),'3 mensajes');
 await page.screenshot({path:'artifacts/panel.png'});
 preview=await panel.locator('#preview').inputValue();assert.ok(preview.indexOf('Primero')<preview.indexOf('Segundo'));
 await panel.locator('#advanced > summary').click();
-await panel.locator('#quotes').click();await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#preview').value.includes('Texto original'));
+await panel.locator('#quotes').click();await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#preview').value.includes('Texto original'));
 // Native text selection must map to complete message rows.
 await panel.locator('#clear').click();await page.evaluate(()=>{const n=document.querySelector('[data-id="true_chat_b"] [data-pre-plain-text] > .selectable-text').firstChild;const r=document.createRange();r.selectNodeContents(n);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'))});
 await panel.locator('#range').click();assert.equal(await panel.locator('#count').textContent(),'1 mensajes');
@@ -47,13 +47,13 @@ preview=await panel.locator('#preview').inputValue();assert.match(preview,/Cita 
 // An unavailable original must not erase the visible reply.
 await page.evaluate(()=>{chrome.runtime.sendMessage=async()=>({ok:true,data:{id:null,text:null,source:'unresolved'}})});
 await panel.locator('#quotes').click();
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#status').textContent.includes('0 de 1 citas'));
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#status').textContent.includes('0 de 1 citas'));
 assert.match(await panel.locator('#preview').inputValue(),/Primero/);
 await page.locator('[data-id="false_chat_sticker"] img').click();
 assert.equal(await panel.locator('#count').textContent(),'2 mensajes');
 assert.match(await panel.locator('#preview').inputValue(),/\[sticker\]/);
 await panel.locator('#quantity').fill('2');await panel.locator('#capture').click();
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#count').textContent==='2 mensajes' && !document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#capture').disabled);
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#count').textContent==='2 mensajes' && !document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#capture').disabled);
 preview=await panel.locator('#preview').inputValue();assert.match(preview,/\[sticker\]/);assert.match(preview,/\[audio/);assert.doesNotMatch(preview,/Segundo/);
 // Actual September 2026 markup: opaque IDs and conv-msg test IDs, no message-in/out classes.
 await panel.locator('#clear').click();
@@ -72,7 +72,7 @@ await page.locator('[data-testid^="conv-msg-"]').nth(3).click({modifiers:['Shift
 assert.equal(await panel.locator('#count').textContent(),'4 mensajes');
 preview=await panel.locator('#preview').inputValue();assert.match(preview,/Primero/);assert.match(preview,/Cita · Ana/);assert.match(preview,/\[sticker\]/);
 await panel.locator('#quantity').fill('2');await panel.locator('#capture').click();
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#count').textContent==='2 mensajes' && !document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#capture').disabled);
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#count').textContent==='2 mensajes' && !document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#capture').disabled);
 assert.match(await panel.locator('#preview').inputValue(),/\[sticker\]/);
 // Selection and copy remain usable with the full panel folded.
 await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedForTest=text}}})});
@@ -92,6 +92,11 @@ await panel.locator('#launcher').click();
 await panel.locator('#advanced > summary').click();
 await panel.locator('.body').evaluate(el=>{el.scrollTop=0});
 await page.screenshot({path:'artifacts/panel.png'});
+// The diagnostic report shows structure only: no message text, names or IDs.
+await panel.locator('#advanced').evaluate(el=>{el.open=true});await panel.locator('#diagnose').click();
+await page.waitForFunction(()=>window.copiedForTest?.startsWith('Chatkeeps 0.6.0'));
+const report=await page.evaluate(()=>window.copiedForTest);
+assert.match(report,/Estructura <32>:/);assert.match(report,/data-pre-plain-text=…/);assert.doesNotMatch(report,/Primero|Segundo|Ana|ACE2/);
 await page.setViewportSize({width:375,height:760});
 const panelBounds=await panel.locator('#panel').boundingBox();assert.ok(panelBounds.x>=0 && panelBounds.x+panelBounds.width<=375);
 assert.equal(await panel.locator('#dock').isVisible(),false);
@@ -105,7 +110,7 @@ assert.equal(await panel.locator('#preview').evaluate(el=>el.selectionEnd-el.sel
 await panel.locator('#close').click();
 // SPA navigation must discard the previous selection and update the header.
 await page.evaluate(()=>{document.querySelector('#pane').replaceChildren();document.querySelector('header span').textContent='Otro chat';document.querySelector('header span').title='Otro chat';});
-await page.waitForFunction(()=>document.querySelector('#hermes-whatsapp-context').shadowRoot.querySelector('#count').textContent==='0 mensajes');
+await page.waitForFunction(()=>document.querySelector('#chatkeeps-root').shadowRoot.querySelector('#count').textContent==='0 mensajes');
 assert.equal(await panel.locator('#preview').inputValue(),'');
 assert.equal(await panel.locator('#dock-count').textContent(),'0');assert.equal(await panel.locator('#copy').isEnabled(),false);
 assert.deepEqual(errors,[]);await browser.close();console.log('Navegador: selección, últimos N, cita, audio y texto nativo verificados.');

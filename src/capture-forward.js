@@ -1,4 +1,4 @@
-import {mergeOrder} from './core.js';
+import {mergeOrder,preferRicher} from './core.js';
 
 // Read before every scroll: virtualized rows can be removed on the next frame.
 // The caller supplies the chat guard, so cancellation never crosses conversations.
@@ -12,7 +12,7 @@ export async function captureForward({startId,read,pane,guard,progress,
     if(!started){const first=ids.indexOf(startId);if(first<0)throw new Error('El mensaje inicial ya no está visible. Vuelve a elegirlo.');started=true;}
     const previous=new Set(order);
     order=mergeOrder(order,ids,'after');order=order.slice(order.indexOf(startId));
-    for(const m of batch)if(order.includes(m.id))messages.set(m.id,m);
+    for(const m of batch)if(order.includes(m.id))messages.set(m.id,preferRicher(messages.get(m.id),m));
     progress(order.map(id=>messages.get(id)));
     if(order.length>=maxMessages){warning=`Captura parcial: se alcanzó el límite de ${maxMessages} mensajes.`;break}
     if(now()>=deadline){warning='Captura parcial: se alcanzó el límite de espera. Puedes exportar lo recogido.';break}

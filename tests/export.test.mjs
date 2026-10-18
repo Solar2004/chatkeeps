@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {renderHtml,collectAssets,assetKey,safeDataUrl} from '../src/html-export.js';
+import {renderHtml,collectAssets,assetKey,safeDataUrl,mediaIssues,issueLine,issueSummary} from '../src/html-export.js';
 import {captureForward} from '../src/capture-forward.js';
 const message=(id,media=[])=>({id,author:'Prueba',direction:'out',timestamp:'10:00, 02/10/2026',text:`Texto ${id}`,media,warnings:[]});
 test('HTML escapes all conversation content, links replies and embeds media offline',()=>{
@@ -33,4 +33,16 @@ test('capture never presents skipped windows or cancellation as a complete range
  const result=await captureForward({startId:'a',read:()=>++reads===1?[message('a')]:[message('z')],pane:()=>viewport,guard(){},progress(){},wait:async()=>{}});
  assert.match(result.warning,/saltó un tramo/);
  await assert.rejects(captureForward({guard(){throw Error('chat cambiado')}}),/chat cambiado/);
+});
+
+test('lista exacta de adjuntos a revisar a mano',()=>{
+ const m=(id,ts,media)=>({id,timestamp:ts,author:'Alex',text:'',media,direction:'out'});
+ const msgs=[m('a','10:00, 18/10/2026',[{type:'imagen'}]),m('b','10:05, 18/10/2026',[{type:'imagen'}]),m('c','10:09, 18/10/2026',[{type:'documento',name:'f.pdf'}])];
+ const assets=new Map([[assetKey('a',0),{base64:'AA==',mime:'image/jpeg'}],[assetKey('b',0),{base64:'AA==',mime:'image/jpeg',preview:true,reason:'msg not found'}],[assetKey('c',0),{error:'Sin descarga'}]]);
+ const issues=mediaIssues(msgs,assets);
+ assert.deepEqual(issues.map(x=>[x.n,x.kind]),[[2,'miniatura'],[3,'no incluido']]);
+ assert.equal(issueLine(issues[1]),'#3 · documento "f.pdf" · 10:09, 18/10/2026 · Alex · no incluido (Sin descarga)');
+ assert.equal(issueSummary(issues),'1 imagen miniatura, 1 documento no incluido');
+ const html=renderHtml({chat:'x',count:3,messages:msgs},assets);
+ assert.match(html,/Revisar a mano: 2/);assert.match(html,/href="#message-2"/);
 });
